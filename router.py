@@ -94,9 +94,9 @@ def number_of_devices():
     return num_lines
 
 
-def device_from_txt(n):
+def device_from_txt(num):
     f = "devices.txt"
-    for i in range(n):
+    for i in range(num):
         line = linecache.getline(f, i + 1)
         nwk = line[:4]
         eui = line[5:]
@@ -104,7 +104,7 @@ def device_from_txt(n):
 
 
 def get_address(i):
-    d = devices[i]
+    d = devices[i-1]
     adr = d.eui
     return adr
 
@@ -147,7 +147,7 @@ while True:
             data = ser.readline()
             message_received(data)
 
-    except KeyboardInterrupt: #ctrl + c jako wejscie do menu
+    except KeyboardInterrupt: #  ctrl + c jako wejscie do menu
         loop = True
         while loop:
             print_menu()  # Displays menu
@@ -162,9 +162,10 @@ while True:
                 show_devices()
                 which_device = input("Number of device")
                 address = get_address(which_device)
-                value = input("Set Value") # tu bedzie wpisywana wartosc rejestru
-                command = "AT+BCAST:00," # tu bedze pobierana komenda w przyszlosci
-                ser.write(command+str(value)+"\r\n")
+                register = raw_input("Choose register")
+                value = raw_input("Set Value")  # tu bedzie wpisywana wartosc rejestru
+                command = "ATREMS:"  # tu bedze pobierana komenda w przyszlosci
+                ser.write(command + address + "," + register + "=" + value + "\r\n")
                 print(address)
             elif choice == 3:
                 print("Menu 3 has been selected")
