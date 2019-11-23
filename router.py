@@ -1,11 +1,12 @@
-from datetime import datetime
-import linecache
-import serial
 import json
+import linecache
+from datetime import datetime
+
+import serial
 
 ser = serial.Serial('/dev/ttyAMA0', 19200)
 messages = ['NEWNODE', 'BCAST', 'MCAST', 'UCAST']  # possible messages
-devices = list()
+devices = []
 
 
 # conversion python dictionary to json
@@ -30,7 +31,9 @@ def configuration_coo():
 """
 
 
-def message_received(buff):
+def message_received(raw_buff):
+    buff = raw_buff.rstrip()
+    print(buff)
     type_of_message = buff.split(':', 1)[0]
 
     if type_of_message == messages[0]:
@@ -57,8 +60,9 @@ def message_received(buff):
 
 def get_info_newnode(buff):
     new_buff = buff[8:]
-    nwk = new_buff.split(',', 2)[0]
-    eui = new_buff.split(',', 2)[1]
+    nw = new_buff.split(',', 2)
+    nwk = nw[0]
+    eui = nw[1]
     return nwk, eui
 
 
@@ -70,7 +74,7 @@ def node_to_file(nwk, eui):
 
 def get_info_message(buff):
     new_buff = buff[6:]
-    eui = (new_buff.split(',', 2)[0])
+    eui = new_buff.split(',', 2)[0]
     # m_length = (new_buff.split(',', 2)[1]) #not needed now
     message = new_buff.split('=', 1)[1]
     return eui, message
@@ -82,7 +86,6 @@ def message_to_file(eui, message):
         "Message": message,
         "EUI": eui,
         "time": time
-
     }
     data_json = pyt_to_json(data_pyth)
     with open("messages.json", "a") as f:
@@ -104,7 +107,7 @@ def device_from_txt(num):
 
 
 def get_address(i):
-    d = devices[i-1]
+    d = devices[i - 1]
     adr = d.eui
     return adr
 
@@ -118,12 +121,8 @@ class Device:
 def show_devices():
     i = 0
     for d in devices:
-        i = i+1
+        i = i + 1
         print(i, d.nwk, d.eui)
-
-
-with open("devices.txt", "a+") as a:
-    a.write("")
 
 
 def print_menu():
@@ -135,48 +134,72 @@ def print_menu():
     print("5. Exit")
     print(67 * "-")
 
+
+def create_files():
+    with open("devices.txt", "a") as a:
+        a.write("")
+    with open("messages.json", "a") as b:
+        b.write("")
+
+
+def send_message(nr, message):
+    d = devices[nr - 1]
+    addr = d.eui
+    command = "AT+UCAST:"
+    ser.write(command + str(addr) + "=" + message + "\r\n")
+
+
+def get_number():
+    while True:
+        num = input("Device number")
+        if type(num) == int:
+            return num
+        else:
+            "It's not a number"
+
+
 # main
-
-
+create_files()
 n = number_of_devices()
 device_from_txt(n)
 
 while True:
+    n = len(devices)
     try:
         if ser.inWaiting() > 0:
             data = ser.readline()
             message_received(data)
 
-    except KeyboardInterrupt: #  ctrl + c jako wejscie do menu
-        loop = True
-        while loop:
+    except KeyboardInterrupt:  # ctrl + c jako wejscie do menu
+        while True:
             print_menu()  # Displays menu
-            choice = input("Enter your choice [1-5]: ")
-
-            if choice == 1:
+            choice = raw_input("Enter your choice [1-5]: ")
+            if choice == "1":
                 print("Menu 1 has been selected")
                 show_devices()
             # opcja wpisywania wartosci do rejestru - wciaz niegotowa
-            elif choice == 2:
-                print("Menu 2 has been selected")
-                show_devices()
-                which_device = input("Number of device")
-                address = get_address(which_device)
-                register = raw_input("Choose register")
-                value = raw_input("Set Value")  # tu bedzie wpisywana wartosc rejestru
-                command = "ATREMS:"  # tu bedze pobierana komenda w przyszlosci
-                ser.write(command + address + "," + register + "=" + value + "\r\n")
-                print(address)
-            elif choice == 3:
+            elif choice == "2":
+                while True:
+                    print("Menu 2 has been selected")
+                    show_devices()
+                    print(n)
+                    number = get_number()
+                    if number <= n:
+                        mess = raw_input("Message: ")
+                        send_message(number, mess)
+                        break
+                    else:
+                        print("It's not a number of device")
+            elif choice == "3":
                 print("Menu 3 has been selected")
                 # You can add your code or functions here
-            elif choice == 4:
+            elif choice == "4":
                 print("Menu 4 has been selected")
                 # You can add your code or functions here
-            elif choice == 5:
+            elif choice == "5":
                 print("Exit the menu")
                 # You can add your code or functions here
-                loop = False  # This will make the while loop to end as not value of loop is set to False
+                break  # This will make the while loop to end as not value of loop is set to False
             else:
                 # Any integer inputs other than values 1-5 we print an error message
                 print("Wrong option selection. Enter any key to try again..")
